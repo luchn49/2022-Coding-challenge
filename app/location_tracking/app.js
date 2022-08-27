@@ -187,11 +187,10 @@ const sampleOfficers = [
 ];
 
 async function loadData() {
+  const response = await axios({ method: "GET", url: "/v1/api/state" });
+
   return {
-    data: {
-      incidents: sampleIncidents,
-      officers: sampleOfficers,
-    },
+    data: response?.data,
     error: null,
   };
 }
