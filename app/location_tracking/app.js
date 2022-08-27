@@ -17,7 +17,7 @@ const app = new PIXI.Application({
   backgroundColor: 0x000000,
 });
 
-document.getElementById('app').appendChild(app.view);
+document.getElementById("app").appendChild(app.view);
 
 function drawMap() {
   const graphics = new PIXI.Graphics();
@@ -49,6 +49,8 @@ function drawTooltip(text, graphics, x, y) {
 
 function drawIncidents(incidents) {
   return incidents.map((incident) => {
+    if (incident.is_resolved) return;
+
     const graphics = new PIXI.Graphics();
     graphics.beginFill(0xbf360c, 1);
     graphics.drawCircle(
@@ -72,16 +74,18 @@ function drawOfficers(officers) {
   officers.forEach((officer) => {
     const graphics = new PIXI.Graphics();
 
-    graphics.beginFill(0x37b218, 1);
-    graphics.drawCircle(
-      officer.loc.x * UNIT_WIDTH,
-      officer.loc.y * UNIT_HEIGHT,
-      UNIT_WIDTH / 2
-    );
+    if (officer.is_online) {
+      graphics.beginFill(0x37b218, 1);
+      graphics.drawCircle(
+        officer.loc.x * UNIT_WIDTH,
+        officer.loc.y * UNIT_HEIGHT,
+        UNIT_WIDTH / 2
+      );
 
-    app.stage.addChild(graphics);
+      app.stage.addChild(graphics);
 
-    drawTooltip(officer.badgeName, graphics, officer.loc.x, officer.loc.y);
+      drawTooltip(officer.badgeName, graphics, officer.loc.x, officer.loc.y);
+    }
   });
 }
 
@@ -90,15 +94,14 @@ function drawAssignLines(incidents, officers) {
   graphics.lineStyle(2, 0x37b218, 1);
 
   incidents.forEach((incident) => {
-    const officer = officers.find((o) => o.id === incident.officerId);
-    graphics.moveTo(
-      incident.loc.x * UNIT_WIDTH,
-      incident.loc.y * UNIT_HEIGHT
-    );
-    graphics.lineTo(
-      officer.loc.x,
-      officer.loc.y
-    );
+    if (!incident.officerId) return;
+
+    const officer = officers.find((o) => {
+      return o.id === incident.officerId;
+    });
+
+    graphics.moveTo(incident.loc.x * UNIT_WIDTH, incident.loc.y * UNIT_HEIGHT);
+    graphics.lineTo(officer.loc.x * UNIT_WIDTH, officer.loc.y * UNIT_HEIGHT);
   });
 
   app.stage.addChild(graphics);
@@ -109,15 +112,17 @@ let incidentGraphics = [];
 function start() {
   app.ticker.add((delta) => {
     incidentGraphics.forEach((g) => {
-      if (g.alpha >= 1) {
+      if (g && g.alpha >= 1) {
         g.alphaDirection = -1;
       }
 
-      if (g.alpha <= 0.6) {
+      if (g && g.alpha <= 0.6) {
         g.alphaDirection = 1;
       }
 
-      g.alpha += 0.005 * g.alphaDirection;
+      if (g && g.alpha && g.alphaDirection) {
+        g.alpha += 0.005 * g.alphaDirection;
+      }
     });
   });
 
@@ -144,15 +149,41 @@ async function loop() {
 }
 
 const sampleIncidents = [
-  { id: 1, codeName: "IC1", loc: { x: 5, y: 10 }, officerId: 1 },
-  { id: 2, codeName: "IC2", loc: { x: 15, y: 20 }, officerId: 3 },
-  { id: 3, codeName: "IC3", loc: { x: 25, y: 20 }, officerId: 2 },
+  {
+    id: 1,
+    codeName: "IC1",
+    is_resolved: false,
+    loc: { x: 5, y: 10 },
+    officerId: 1,
+  },
+  {
+    id: 2,
+    codeName: "IC2",
+    is_resolved: false,
+    loc: { x: 15, y: 20 },
+    officerId: 3,
+  },
+  {
+    id: 3,
+    codeName: "IC3",
+    is_resolved: false,
+    loc: { x: 25, y: 20 },
+    officerId: 2,
+  },
+  {
+    id: 5,
+    codeName: "IC5",
+    is_resolved: false,
+    loc: { x: 30, y: 35 },
+  },
+  { id: 4, codeName: "IC4", is_resolved: true },
 ];
 
 const sampleOfficers = [
-  { id: 1, badgeName: "OF1", loc: { x: 8, y: 12 } },
-  { id: 2, badgeName: "OF2", loc: { x: 19, y: 20 } },
-  { id: 3, badgeName: "OF3", loc: { x: 10, y: 20 } },
+  { id: 1, badgeName: "ONL1", is_online: true, loc: { x: 8, y: 12 } },
+  { id: 2, badgeName: "ONL2", is_online: true, loc: { x: 19, y: 20 } },
+  { id: 3, badgeName: "ONL3", is_online: true, loc: { x: 10, y: 20 } },
+  { id: 4, badgeName: "OF3", is_online: false, loc: { x: 10, y: 20 } },
 ];
 
 async function loadData() {
